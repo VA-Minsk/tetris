@@ -50,7 +50,6 @@ Item		dw	0
 Rotated		dw	0
 Drops		dw  0
 RandSeed    dw	0
-PreView		dw	0
 Paused      db  0
 HiScoreData db	14,0
 HiScoreName db	15 dup ('$')
@@ -252,20 +251,25 @@ initAllScreen PROC
 	rep movsw
 	ret
 ENDP   
-	
+
+Sleep PROC
+	push ax bx cx dx
+
+	GetTimerValue
+
+	add dx, 3
+	mov bx, dx
+
+checkTimeLoop:
+	GetTimerValue
+	cmp dx, bx			;ax - current value, bx - needed value
+	jl checkTimeLoop
+
+	pop dx cx bx ax
+	ret
+ENDP
+
 mainGame PROC
-;	Get old int 1ch
-	mov		ax,351ch                       ; Function 35 interrupt 1c
-	int     21h                 			; Get interrupt adress
-	mov     word ptr OldInt1c,bx           ; 1c clock tick
-	mov     ax,es
-	mov     word ptr OldInt1c+2,ax
-
-;	Store new int 1ch
-	mov     dx,offset _NewInt1c            ; Set clock tick
-	mov     ax,251ch                       ; to point to NewInt1c
-	int     21h
-
 ;	Set ctrl/break int
 	mov		dx,offset quit
 	mov		al,23h
@@ -274,18 +278,11 @@ mainGame PROC
 ;	Play again starts here
 restart:
 	call    RandInit  				; Initialize random numbers
-	call    InitScreen	   			; Initialize screen
+	
+	xor 	di,di
+	mov		ax,0b800h
+	mov		es,ax
 
-;	Print first preview
-	cmp		PreView,0
-	je		no_init_preview
-;	mov		ax,OldRand
-;	shl		ax,1
-;	shl		ax,1
-;	mov		PreItem,ax
-;	mov		si,1
-;	mov		di,PREVIEW_POS
-;	call	Print
 
 no_init_preview:	;143
 	mov		ax, LEVEL_WAIT_INIT             ; wait level*700 clicks
@@ -311,13 +308,12 @@ no_init_preview:	;143
 ;	Main loop
 ;	*********
 
-	jmp     short while_kbhit
+	jmp     while_kbhit
+
 for_ever:
-	cmp 	word ptr Timer,0
-	jne		short while_kbhit
-	mov		ax,word ptr TimerInit
-	mov		Timer,ax
-	call    near ptr Down                  ; go down
+	call 	Sleep
+
+	call    Down                  ; go down
 	or		ax,ax
 	jne		while_kbhit
 	jmp		game_over
@@ -326,17 +322,11 @@ while_kbhit:
 	CheckBuffer
 	jz      for_ever						;клавишу не нажали
 
-	call    GetKey        	  		; al=getkey
+	;call    GetKey        	  		; al=getkey
+	ReadFromBuffer
 
-	cmp		al,'p'
-	jne		short not_p
-	xor		PreView,1
-	jnz		short prev_on
-	call	near ptr RemovePreView
-	jmp		not_p
-prev_on:
-	call 	near ptr PrintPreView
-not_p:
+	;; todo:stop
+
 	or 		al,al
 	je		zero_key
 	xor 	ah,ah
@@ -446,13 +436,6 @@ yesno:
 ;	Close down
 ;	**********
 quit:
-	mov     dx,word ptr OldInt1c					; restore old
-	mov     bx,word ptr OldInt1c+2					; interrupt 1c vector
-	push    ds
-	mov     ds,bx
-	mov     ax,251ch
-	int     21h
-	pop		ds
 
     ret
 ENDP
@@ -493,21 +476,6 @@ get_new:
 	mov		word ptr Pos,START_POS
 	mov		word ptr Rotated,0
 
-;	Calculate score
-	mov		ax,word ptr Drops
-	shr		ax,1
-	add		ax,2
-	sub		ax,PreView
-	mov		dx,word ptr Level
-	mul		dx
-	add		Score,ax
-	adc		Score+2,dx
-	mov		di,SCORE_POS
-	mov		ax,Score
-	mov		dx,Score+2
-	call	PrintLong
-	mov		word ptr Drops,0
-
 ;	Test if new tetris can be printed
 	mov		ax,word ptr Item
 	add		ax,word ptr Rotated
@@ -530,33 +498,11 @@ place_new:
 	mov		ax,	word ptr TimerInit
 	mov		word ptr Timer,ax
 
-;	Display preview tetris
-	cmp		PreView,0
-	je		short no_preview
-	call	near ptr RemovePreView
-	call	near ptr PrintPreview
-;	Return true.
 no_preview:
 	mov     ax,1
 	pop 	si
 	ret
 Down	endp
-	
-InitScreen	proc
-	
-	xor 	di,di
-	mov		ax,0b800h
-	mov		es,ax
-
-	push		es
-	push		ds
-	pop		es
-	mov		cx,25
-	mov		di, offset RowFill
-	mov		ax,0
-	rep stosb									; Clear buffer
-	pop		es
-InitScreen	endp
 
 PrintPreView	proc near
 	mov		si,1
