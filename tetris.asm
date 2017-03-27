@@ -388,10 +388,11 @@ skip_even:
 	ret
 Rand7  endp
 
+;ax - item number ???
 Print	proc	near					;ax= item_nr    di=scroffs si=T/F
 	mov		dx,0b800h
 	mov		es,dx
-	mov 	dx,06
+	mov 	dx,06						; 06 - количество элементов в строке Items
 	imul    dx                      	; ax=ax*6
 	add 	ax, offset Items      		; ax+=[_items]
 
@@ -406,7 +407,7 @@ loop2:
 	add 	bx,dx
 	push	ax
 	mov 	al,byte ptr [bx+2]
-	cbw
+	cbw								; байт al в слово в ax (размножением знакового бита)
 	shl		ax,1
 	add		di,ax
 	pop		ax
@@ -416,23 +417,6 @@ loop2:
 	jne	    loop2
 	ret
 Print	endp
-
-PrintLong	proc 					;print number
-
-	mov		bx,0b800h
-	mov		es,bx
-
-	mov		bx,10
-more_digits:
-	div		bx
-	add		dx,'0'+256*7
-	mov		es:[di],dx
-	sub		di,2
-	mov		dx,0
-	cmp		ax,0
-	jne		more_digits
-	ret
-PrintLong	endp
 
 Bottom	proc	near      	;ax=ItemNr			di=scroffset
 	mov		dx,0b800h
