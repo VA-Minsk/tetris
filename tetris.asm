@@ -114,26 +114,6 @@ Items label word
 	db	BLOCK,	COLOR7,	216,   1,  38,	 1
 	db	BLOCK,	COLOR7,	216,  40,	1,	40
 
-
-jump_table      label   word
-	dw      go_rotate
-	dw      inc_level
-	dw      while_kbhit
-	dw      go_left
-	dw      while_kbhit
-	dw      go_right
-	dw      while_kbhit
-	dw      while_kbhit
-	dw      go_drop
-jump_table2		label word
-	dw		go_drop
-	dw		while_kbhit
-	dw		go_left
-	dw		go_rotate
-	dw		go_right
-	dw		while_kbhit
-	dw		inc_level
-
 ;temporary
 TetrisLogo dw 0
 
@@ -270,10 +250,6 @@ checkTimeLoop:
 ENDP
 
 mainGame PROC
-;	Set ctrl/break int
-	mov		dx,offset quit
-	mov		al,23h
-	int		21h
 
 ;	Play again starts here
 restart:
@@ -285,40 +261,20 @@ restart:
 
 
 no_init_preview:	;143
-	mov		ax, LEVEL_WAIT_INIT             ; wait level*700 clicks
-	mov		dx,	word ptr Level				; befor next level change
-	mov		word ptr TimerInit,18
-	sub		word ptr TimerInit,dx
-	mul		dx
-	mov		word ptr LevelWait,ax           ; set LevelWait to 18-level
-
-;	Print out level
-	xor		dx,dx
-	mov		ax,word ptr Level               ; print level
-	mov		di,LEVEL_POS
-	call	PrintLong
-
-;	Print Hiscore
-	mov		dx, word ptr HiScore+2
-	mov		ax, word ptr Hiscore
-	mov		di, HISCORE_POS
-	call	PrintLong
-	; TODO
-
 ;	Main loop
 ;	*********
 
-	jmp     while_kbhit
+	jmp     checkKeyPressing
 
 for_ever:
 	call 	Sleep
 
 	call    Down                  ; go down
 	or		ax,ax
-	jne		while_kbhit
+	jne		checkKeyPressing
 	jmp		game_over
 
-while_kbhit:
+checkKeyPressing:
 	CheckBuffer
 	jz      for_ever						;клавишу не нажали
 
@@ -327,111 +283,39 @@ while_kbhit:
 
 	;; todo:stop
 
-	or 		al,al
-	je		zero_key
-	xor 	ah,ah
-	sub		ax,'2'
-	mov		bx,ax
-	cmp		bx,7
-	ja		short while_kbhit
-	shl		bx,1
-	jmp		word ptr cs:jump_table2[bx]
-zero_key:
+	cmp		al, KExit
+	je 		quit
+	cmp		al, KLeft
+	je 		go_left
+	cmp		al, KRight
+	je 		go_right
+	cmp		al, KRotate
+	je 		go_rotate
 
-	call    near ptr GetKey        			; al=getkey
+	jmp for_ever
 
-   ;                    switch(ch)
-	cbw                                     ; ax=al
-	sub     ax,72
-	mov     bx,ax
-	cmp     bx,8
-	ja      short while_kbhit
-	shl     bx,1
-	jmp     word ptr cs:jump_table[bx]
 go_left:
 	push	si
 	mov		si,-2
 	call    Move
 	pop		si
-	jmp     short while_kbhit
+	jmp     checkKeyPressing
 go_right:
 	push	si
 	mov		si,2
 	call    Move
 	pop		si
-	jmp     short while_kbhit
+	jmp     checkKeyPressing
 go_drop:
 	call    Drop
 	or		ax,ax
-	je		short game_over
-	jmp     short while_kbhit
+	je		game_over
+	jmp     checkKeyPressing
 go_rotate:
 	call    Rotate
-	jmp     short while_kbhit
-inc_level:
-	cmp		Level,17
-	jge		short while_kbhit
-	add		LevelWait,LEVEL_WAIT_INIT
-	inc		word ptr Level
-	dec		word ptr TimerInit
-	xor		dx,dx
-	mov		ax,word ptr Level
-	mov		di,LEVEL_POS
-	call	PrintLong
-	jmp     while_kbhit
+	jmp     checkKeyPressing
 game_over:
-	mov		Timer,0
-	mov		Paused,1
-
-;	Test for new hiscore
-	jmp		no_hiscore
-test_lsw:
-	jmp		short no_hiscore
-
-EnvLoop:
-	repnz scasb
-	cmp     es:[di],ah
-	jne     EnvLoop
-	or      ch,10000000b
-	neg     cx
-
-	mov     si,cx
-	inc     si
-	inc     si
-
-	push	ds
-	push    es
-	pop     ds
-	mov     dx,si
-	mov     ax,3d00h + 010b                 ; 010b = read/write
-	int     21h								; open tetris.com
-	pop		ds
-
-	mov		bx,ax							; file handle
-	mov		ax,4200h						; lseek from start of file
-	mov		dx,offset HiscoreName
-	sub		dx,0100h
-	xor		cx,cx							; cx:dx=hiscorename
-	int		21h
-
-	mov		ah,40h
-	mov		cx,offset OldInt1c-offset HiScoreName ; number of bytes to write
-	mov		dx,offset	HiScoreName
-	int		21h
-
-	mov		ah,3eh							; close file
-	int		21h
-
-	no_hiscore:
-	call	near ptr GameOverPrompt
-yesno:
-	call	near ptr GetKey
-	cmp		al,'n'
-	je		quit
-	cmp		al,'y'
-	jne		yesno
-;  	Play again!
-	jmp restart
+	jmp quit
 
 ;	Close down
 ;	**********
@@ -550,10 +434,10 @@ Rand7  proc    near
 	imul    word ptr randseed
 
 	test    ax,1
-	je      short even_number
+	je      even_number
 	add     ax,3172
 	mov     word ptr randseed,ax
-	jmp     short skip_even
+	jmp     skip_even
 even_number:
 	shl		ax,1
 	add		ax,Score
@@ -596,7 +480,7 @@ loop2:
 	ret
 Print	endp
 
-PrintLong	proc near
+PrintLong	proc 					;print number
 
 	mov		bx,0b800h
 	mov		es,bx
@@ -609,7 +493,7 @@ more_digits:
 	sub		di,2
 	mov		dx,0
 	cmp		ax,0
-	jne		short more_digits
+	jne		more_digits
 	ret
 PrintLong	endp
 
@@ -741,7 +625,7 @@ Move proc near					; si=dPos
 	pop     si
 	push	ax
 	or		ax,ax
-	je		short no_room
+	je		no_room
 	add		word ptr Pos,si				; ok, add Pos
 no_room:
 	push	si
@@ -773,7 +657,7 @@ Rotate	proc	near
 	mov		di,word ptr Pos
 	call	near ptr TestSpace
 	or		ax,ax
-	je		short no_room1
+	je		no_room1
 	mov		ax,word ptr Rotated
 	inc		ax
 	mov		bx,4
@@ -825,18 +709,18 @@ _NewInt1c       proc    far
 
 	inc		word ptr randseed
 	cmp		word ptr Timer,0
-	je		short pause
+	je		pause
 	cmp		Paused,0
-	je		short pause_ok
+	je		pause_ok
 	call	RemovePause
 	mov		Paused,0
 pause_ok:
 	dec     word ptr Timer
 	dec		word ptr LevelWait
-	jne		short return
+	jne		return
 	mov		word ptr LevelWait,LEVEL_WAIT_INIT
 	cmp		TimerInit,0
-	je		short return
+	je		return
 	dec		word ptr TimerInit
 	inc		word ptr Level
 	xor		dx,dx
@@ -846,7 +730,7 @@ pause_ok:
 	jmp		return
 pause:
 	cmp		Paused,0
-	jne		short return
+	jne		return
 	call	PrintPause
 	mov		Paused,1
 return:
