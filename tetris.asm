@@ -1,6 +1,3 @@
-;???? "??????"
-
-
 ;macro HELP
 clearScreen MACRO
 	push ax
@@ -17,55 +14,25 @@ ENDM
 .data
 
 LEVEL_WAIT_INIT	equ		700
-START_POS		equ		280
+START_POS		equ		26			;was 280
 
-HISCORE_POS     equ		24
-SCORE_POS		equ		264
 LEVEL_POS		equ		424
-
-BORDER_CHAR			equ		32
-BORDER_COLOR		equ     29
-
-HISCORE_TEXT_POS	equ		0
-SCORE_TEXT_POS		equ		240
-LEVEL_TEXT_POS		equ		400
-LOGO_POS			equ		800
-BY_POS				equ 	970
-TORE_POS			equ 	1128
-BAST_POS			equ		1202
-PREVIEW_TEXT_POS	equ		134
-GAME_OVER_POS		equ		934
-PLAY_AGAIN_POS		equ     1654
-PAUSE_POS			equ 	934
-
-
-PREVIEW_POS		equ		380
 
 Timer 		dw 	0
 LevelWait   dw	LEVEL_WAIT_INIT
 Level		dw	1
-StartLevel	dw	1
 Pos			dw	START_POS
 Item		dw	0
 Rotated		dw	0
 Drops		dw  0
 RandSeed    dw	0
 Paused      db  0
-HiScoreData db	14,0
-HiScoreName db	15 dup ('$')
-HiScore 	dd	0
 OldInt1c 	db  4 dup (0)
 Score		dw	2 dup (0)
 OldRand		dw	1 dup (0)
-PreItem		dw	1 dup (0)
 TimerInit	dw	1 dup (0)
 
-
-GameOverText label word
-	db	'GAME OVER',0
-	db 	'Play again?',0
 RowFill		db	25 dup (0)
-EnterName	db	'Enter name:',10,13,'$'
 
 ;blocks
 BLOCK	equ		254
@@ -114,15 +81,13 @@ Items label word
 	db	BLOCK,	COLOR7,	216,   1,  38,	 1
 	db	BLOCK,	COLOR7,	216,  40,	1,	40
 
-;temporary
-TetrisLogo dw 0
-
 
 
 ;key bindings (configuration)
 KRotate equ 48h	    ;Up key
 KLeft equ 4Bh	    ;Left key
 KRight equ 4Dh		;Right key
+KDrop equ 50h		;Down key
 KExit equ 01h 		;ESC key
 
 xSize equ 80
@@ -259,14 +224,13 @@ restart:
 	mov		ax,0b800h
 	mov		es,ax
 
-
-no_init_preview:	;143
+;143
 ;	Main loop
 ;	*********
-
+	
 	jmp     checkKeyPressing
 
-for_ever:
+newLoop:
 	call 	Sleep
 
 	call    Down                  ; go down
@@ -276,12 +240,9 @@ for_ever:
 
 checkKeyPressing:
 	CheckBuffer
-	jz      for_ever						;клавишу не нажали
+	jz      newLoop						;клавишу не нажали
 
-	;call    GetKey        	  		; al=getkey
 	ReadFromBuffer
-
-	;; todo:stop
 
 	cmp		al, KExit
 	je 		quit
@@ -291,8 +252,10 @@ checkKeyPressing:
 	je 		go_right
 	cmp		al, KRotate
 	je 		go_rotate
+	cmp		al, KDrop
+	je 		go_drop
 
-	jmp for_ever
+	jmp newLoop
 
 go_left:
 	push	si
@@ -326,21 +289,21 @@ ENDP
 
 Drop	proc	near
 	push	si
-	mov		si,80
+	mov		si, 2*xSize			;was 80
 drop_more:
 	call	Move
 	inc		word ptr Drops
 	or		ax,ax
 	jne		drop_more
 
-	call	near ptr Down
+	call	Down
 	pop		si
 	ret
 Drop	endp
 
 Down	proc	near
 	push 	si
-	mov     si,80
+	mov		si, 2*xSize			;was 80
 	call	Move
 
 	or		ax,ax						; room?
@@ -351,9 +314,9 @@ get_new:
 	mov		ax,word ptr Item
 	add		ax,word ptr Rotated
 	mov		di,word ptr Pos
-	call	near ptr Bottom			; reached the bottom
+	call	Bottom			; reached the bottom
 
-	call	near ptr Rand7			; get new item
+	call	Rand7			; get new item
 	shl		ax,1
 	shl		ax,1
 	mov		word ptr Item,ax
@@ -387,32 +350,6 @@ no_preview:
 	pop 	si
 	ret
 Down	endp
-
-PrintPreView	proc near
-	mov		si,1
-	mov		ax,OldRand
-	shl		ax,1
-	shl		ax,1
-	mov		PreItem,ax
-	mov		di,PREVIEW_POS
-	call	Print
-	ret
-PrintPreView	endp
-
-RemovePreView	proc near
-	xor 	si,si
-	mov		ax,word ptr PreItem
-	mov		di,PREVIEW_POS
-	call	Print
-	ret
-RemovePreView	endp
-
-GetKey proc    near
-	mov      ah,07h
-	mov      dl,0ffh
-	int      21h
-	ret
-GetKey endp
 
 RandInit       proc    near
 	mov     bp,sp
@@ -613,7 +550,7 @@ Move proc near					; si=dPos
 	mov		ax,word ptr Item
 	add		ax,word ptr Rotated
 	mov		di,word ptr Pos
-	call	near ptr Print				; remove old
+	call	Print				; remove old
 
 	mov		ax,word ptr Item
 	add		ax,word ptr Rotated
@@ -621,7 +558,7 @@ Move proc near					; si=dPos
 	pop 	si
 	add		di,si
 	push 	si
-	call	near ptr TestSpace				; test if room
+	call	TestSpace				; test if room
 	pop     si
 	push	ax
 	or		ax,ax
@@ -633,7 +570,7 @@ no_room:
 	mov		ax,word ptr Item
 	add		ax,word ptr Rotated
 	mov		di,word ptr Pos
-	call	near ptr Print
+	call	Print
 	pop		si
 	pop		ax
 	ret
@@ -645,7 +582,7 @@ Rotate	proc	near
 	mov		ax,word ptr Item
 	add		ax,word ptr Rotated
 	mov		di,word ptr Pos
-	call	near ptr Print
+	call	Print
 
 	mov		ax,word ptr Rotated
 	inc		ax
@@ -655,7 +592,7 @@ Rotate	proc	near
 	mov		ax,word ptr Item
 	add		ax,dx
 	mov		di,word ptr Pos
-	call	near ptr TestSpace
+	call	TestSpace
 	or		ax,ax
 	je		no_room1
 	mov		ax,word ptr Rotated
@@ -670,96 +607,9 @@ no_room1:
 	mov		ax,word ptr Item
 	add		ax,word ptr Rotated
 	mov		di,Pos
-	call	near ptr Print
+	call	Print
 	pop		si
 	ret
 Rotate	endp
-
-GameOverPrompt		proc near
-	mov		ah,1
-	mov		di,GAME_OVER_POS
-	mov		si,offset GameOverText
-	call	near ptr PrintMonoString
-	mov		di,PLAY_AGAIN_POS
-	call	near ptr PrintMonoString
-	ret
-GameOverPrompt		endp
-
-PrintMonoString		proc near
-	;removed
-mono_done:
-	ret
-PrintMonoString		endp
-
-_NewInt1c       proc    far
-	push	ax
-	push	bx
-	push	cx
-	push	dx
-	push	di
-	push	si
-	push	bp
-	push	ds
-	push	es
-
-	mov     bp,cs
-	mov     ds,bp
-	pushf
-	call    dword ptr OldInt1c
-
-	inc		word ptr randseed
-	cmp		word ptr Timer,0
-	je		pause
-	cmp		Paused,0
-	je		pause_ok
-	call	RemovePause
-	mov		Paused,0
-pause_ok:
-	dec     word ptr Timer
-	dec		word ptr LevelWait
-	jne		return
-	mov		word ptr LevelWait,LEVEL_WAIT_INIT
-	cmp		TimerInit,0
-	je		return
-	dec		word ptr TimerInit
-	inc		word ptr Level
-	xor		dx,dx
-	mov		ax,word ptr Level
-	mov		di,LEVEL_POS
-	call	PrintLong
-	jmp		return
-pause:
-	cmp		Paused,0
-	jne		return
-	call	PrintPause
-	mov		Paused,1
-return:
-	pop 	es
-	pop 	ds
-	pop 	bp
-	pop 	si
-	pop 	di
-	pop 	dx
-	pop 	cx
-	pop 	bx
-	pop 	ax
-
-	iret
-_NewInt1c       endp
-
-PrintColorString	proc near
-	;removed
-	ret
-PrintColorString 	endp
-
-RemovePause proc near
-	;removed
-	ret
-RemovePause endp
-
-PrintPause proc near
-	;removed
-	ret
-PrintPause endp
 
 end main
