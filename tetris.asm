@@ -197,6 +197,8 @@ ENDP
 
 mainGame PROC
 	call GenerateNewBlock
+
+	mov bx, figureBlock
 	call PrintCurrFigure
 
 ;	Main loop
@@ -207,13 +209,13 @@ checkKeyPressing:
 
 	ReadFromBuffer
 
-	cmp		al, KExit
+	cmp		ah, KExit
 	je 		game_over
-	cmp		al, KLeft
+	cmp		ah, KLeft
 	je 		go_left
-	cmp		al, KRight
+	cmp		ah, KRight
 	je 		go_right
-	cmp		al, KRotate
+	cmp		ah, KRotate
 	je 		go_rotate
 ;	cmp		al, KDrop
 ;	je 		go_drop
@@ -303,6 +305,8 @@ GenerateNewBlock PROC
 	ret
 ENDP
 
+;	Input:
+;		bx - symbol how to print current figure
 PrintCurrFigure PROC
 	push ax cx ds es si di
 
@@ -332,7 +336,7 @@ loopOneRow:
 	cmp al, emptyBlock
 	je skipWriteBlock
 
-	mov word ptr [di], figureBlock
+	mov word ptr [di], bx
 
 skipWriteBlock:
 	inc si
@@ -347,12 +351,6 @@ skipWriteBlock:
 	loop loopAllRows
 
 	pop di si es ds cx ax
-	ret
-ENDP
-
-DeleteCurrFigure PROC
-	;todo
-
 	ret
 ENDP
 
@@ -380,8 +378,24 @@ Move proc
 endp
 
 Rotate	proc
-	;todo
+	push ax bx
 
+	mov bx, space			;delete old figure
+	call PrintCurrFigure
+
+	;change current figure index
+	inc currViewNum
+	mov al, currViewNum
+	cmp al, maxViewNum
+	jl skipNulling
+
+	mov currViewNum, 0		;loop indexing
+
+skipNulling:
+	mov bx, figureBlock			;print new view of figure
+	call PrintCurrFigure
+
+	pop bx ax
 	ret
 endp
 
