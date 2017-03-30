@@ -282,6 +282,10 @@ ENDP
 GenerateNewFigure PROC
 	push ax cx dx ds es si di
 
+	mov ax, dataStart
+	mov ds, ax
+	mov es, ax
+
 	mov ax, numOfFigures
 	call Random
 	mov cx, oneFigureBigSize	;в cx - размер одной "пачки" из видов фигур
@@ -289,9 +293,7 @@ GenerateNewFigure PROC
 
 	mov si, offset figures
 	add si, ax					;получаем реальное смещение в памяти, где сгенерированная фигура
-	mov ax, dataStart
-	mov ds, ax
-	mov es, ax
+	
 	mov di, offset currentFigure	;теперь всё готово для "копирования" новой фигуры
 	rep movsb
 
@@ -359,6 +361,8 @@ ENDP
 ;		ax = 0 - all is good
 ;		ax = 1 - no more plase in field
 Down proc
+	push cx si ds
+
 	mov ah, 0
 	mov al, 1
 	call Move
@@ -369,12 +373,46 @@ Down proc
 	call copyCurrentFigureToVirtualField
 	call GenerateNewFigure
 
-	;todo: check new figure
+	mov ax, dataStart
+	mov ds, ax
+
+	call getCurrentFigure
+	call checkFigureForCrossing
+	
+	jmp DownToQuit
 
 goodQuit:
 	mov ax, 0
+
+DownToQuit:
+	pop ds si cx
 	ret
 endp
+
+;	Input:
+;		ds:si - starting pos to compare
+;	Return:
+;		ax = 0 - all is good (not crossing)
+;		ax != 0 - crossing
+checkFigureForCrossing PROC
+	push cx es di
+
+	mov ax, dataStart
+	mov es, ax
+
+	mov di, offset virtualField
+	mov cx, fieldSize
+
+checkCrossingLoop:
+	mov ax, [si]
+	and ax, [di]
+	jnz qutiCrossingProc
+	loop checkCrossingLoop
+
+qutiCrossingProc:
+	pop di es cx
+	ret
+ENDP
 
 DeleteRow proc
 	;todo
@@ -424,13 +462,7 @@ copyCurrentFigureToVirtualField PROC
 	mov ds, ax
 	mov es, ax
 
-	xor ah, ah
-	mov al, currViewNum
-	mov cx, fieldSize			;в cx - размер одного вида фигур
-	mul cx						;теперь имеем смещение фигуры относительно начала currentFigure
-
-	mov si, offset currentFigure
-	add si, ax					;получаем реальное смещение в памяти, где сгенерированная фигура
+	call getCurrentFigure
 
 	mov di, offset virtualField
 
@@ -445,5 +477,24 @@ loopAddFigure:
 	pop di si es ds dx cx ax
 	ret
 ENDP
+
+;	Return:
+;		si - offset of current figure
+;		cx - current figure size
+getCurrentFigure PROC
+	push ax
+
+	xor ah, ah
+	mov al, currViewNum
+	mov cx, fieldSize			;в cx - размер одного вида фигур
+	mul cx						;теперь имеем смещение фигуры относительно начала currentFigure
+
+	mov si, offset currentFigure
+	add si, ax					;получаем реальное смещение в памяти, где сгенерированная фигура
+
+	pop ax
+	ret
+ENDP
+
 
 end main
