@@ -371,6 +371,7 @@ Down proc
 	je goodQuit
 
 	call copyCurrentFigureToVirtualField
+	;todo: delete rows
 	call GenerateNewFigure
 
 	mov ax, dataStart
@@ -423,13 +424,33 @@ endp
 ;	Move current block to calculated position only to one direction
 ;	Input:
 ;		ah - how much points current figure goes right (-1, 0, 1)
-;		al - how much points currnet figure goes down  (-1, 0, 1)
+;		al - how much points currnet figure goes down  (0, 1)
 ;	Output:
 ;		ax = 0 - all is good
 ;		ax != 0 - we cannot do that
 Move proc
-	;todo
+	push ds es si di
 
+	cmp ah, 0
+	je moveDown
+	cmp al, 0
+	je MoveSucceedExit
+	jl MoveErrorExit
+
+	;;todo
+
+moveDown:
+	;mov
+	;todo
+	
+
+MoveErrorExit:
+	mov ax, 1
+	jmp MoveExit
+MoveSucceedExit:
+	mov ax, 0
+MoveExit:
+	pop di si es ds
 	ret
 endp
 
