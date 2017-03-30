@@ -8,80 +8,9 @@ ENDM
 ;end macro help
 
 .model small
-
 .stack 100h
 
 .data
-
-LEVEL_WAIT_INIT	equ		700
-START_POS		equ		26			;was 280
-
-LEVEL_POS		equ		424
-
-Timer 		dw 	0
-LevelWait   dw	LEVEL_WAIT_INIT
-Level		dw	1
-Pos			dw	START_POS
-Item		dw	0
-Rotated		dw	0
-Drops		dw  0
-RandSeed    dw	0
-Paused      db  0
-OldInt1c 	db  4 dup (0)
-Score		dw	2 dup (0)
-OldRand		dw	1 dup (0)
-TimerInit	dw	1 dup (0)
-
-RowFill		db	25 dup (0)
-
-;blocks
-BLOCK	equ		254
-
-COLOR1	equ		65
-COLOR2	equ     36
-COLOR3	equ     23
-COLOR4	equ     19
-COLOR5	equ     45
-COLOR6	equ     78
-COLOR7	equ     124
-
-Items label word
-	db	BLOCK,	COLOR1,	176,  40,  40,  40
-	db	BLOCK,	COLOR1,	214,   1,   1,   1
-	db	BLOCK,	COLOR1,	176,  40,  40,	40
-	db	BLOCK,	COLOR1,	214,   1,	1,	 1
-
-	db	BLOCK,	COLOR2,	215,  40,  40,	 1
-	db	BLOCK,	COLOR2,	217,  38,	1,	 1
-	db	BLOCK,	COLOR2,	215,   1,  40,	40
-	db	BLOCK,	COLOR2,	215,   1,	1,	38
-
-	db	BLOCK,	COLOR3,	217,  40,  39,	 1
-	db	BLOCK,	COLOR3,	215,   1,	1,	40
-	db	BLOCK,	COLOR3,	215,   1,  39,	40
-	db	BLOCK,	COLOR3,	255,  40,	1,	 1
-
-	db	BLOCK,	COLOR4,	215,   1,	1,	39
-	db	BLOCK,	COLOR4,	215,  40,	1,	39
-	db	BLOCK,	COLOR4,	216,  39,	1,	 1
-	db	BLOCK,	COLOR4,	216,  39,	1,	40
-
-	db	BLOCK,	COLOR5,	215,   1,  39,	 1
-	db	BLOCK,	COLOR5,	215,   1,  39,	 1
-	db	BLOCK,	COLOR5,	215,   1,  39,	 1
-	db	BLOCK,	COLOR5,	215,   1,  39,	 1
-
-	db	BLOCK,	COLOR6,	215,   1,  40,	 1
-	db	BLOCK,	COLOR6,	216,  39,	1,	39
-	db	BLOCK,	COLOR6,	215,   1,  40,	 1
-	db	BLOCK,	COLOR6,	216,  39,	1,	39
-
-	db	BLOCK,	COLOR7,	216,   1,  38,	 1
-	db	BLOCK,	COLOR7,	216,  40,	1,	40
-	db	BLOCK,	COLOR7,	216,   1,  38,	 1
-	db	BLOCK,	COLOR7,	216,  40,	1,	40
-
-
 
 ;key bindings (configuration)
 KRotate equ 48h	    ;Up key
@@ -95,12 +24,9 @@ ySize equ 18
 xField equ 25           ;size of playground
 yField equ 14
 oneMemoBlock equ 2
-scoreSize equ 4
 
 videoStart dw 0B800h
 dataStart dw 0000h
-timeStart dw 0040h
-timePosition dw 006Ch
 
 space equ 0020h
 Figure1Symbol equ 0AEFh
@@ -138,6 +64,18 @@ secondF	dw fieldSpacing, xSize - xField - 5 dup(grSpc), VWallSymbol, space
 		  		
 		dw space, 0FC8h, xField dup(HWallSymbol), 0FCAh, xSize - xField - 5 dup(HWallSymbol), 0FBCh, space
 		dw xSize dup(space)
+
+;	Figures
+maxViewNum equ 4
+
+emptyFig equ 0
+fullFig equ 0ffh
+
+;	save: figure - row number - column number
+currentFigure db maxViewNum*xField*yField dup(emptyFig)
+fututeFigure db maxViewNum*xField*yField dup(emptyFig)
+virtualField db xField*yField dup(emptyFig)
+
 .code
 
 main:
@@ -215,32 +153,11 @@ checkTimeLoop:
 ENDP
 
 mainGame PROC
-
-;	Play again starts here
-restart:
-	call    RandInit  				; Initialize random numbers
-	
-	xor 	di,di
-	mov		ax,0b800h
-	mov		es,ax
-
-;143
 ;	Main loop
 ;	*********
-	
-	jmp     checkKeyPressing
-
-newLoop:
-	call 	Sleep
-
-	call    Down                  ; go down
-	or		ax,ax
-	jne		checkKeyPressing
-	jmp		game_over
-
 checkKeyPressing:
 	CheckBuffer
-	jz      newLoop						;клавишу не нажали
+	jz      newIteration						;клавишу не нажали
 
 	ReadFromBuffer
 
@@ -252,42 +169,45 @@ checkKeyPressing:
 	je 		go_right
 	cmp		al, KRotate
 	je 		go_rotate
-	cmp		al, KDrop
-	je 		go_drop
+;	cmp		al, KDrop
+;	je 		go_drop
 
-	jmp newLoop
+;	If not found key - down block & go to new iteration
+
+	call    Down                  ; go down
+	cmp		ax, 0
+	jne		game_over
+
+	call 	Sleep
+		
+	jmp		checkKeyPressing
 
 go_left:
-	push	si
-	mov		si,-2
+	mov		ah, -1
+	mov 	al, 0
 	call    Move
-	pop		si
 	jmp     checkKeyPressing
 go_right:
-	push	si
-	mov		si,2
+	mov		ah, 1
+	mov 	al, 0
 	call    Move
-	pop		si
 	jmp     checkKeyPressing
-go_drop:
-	call    Drop
-	or		ax,ax
-	je		game_over
-	jmp     checkKeyPressing
+;go_drop:
+;	call    Drop
+;	or		ax,ax
+;	je		game_over
+;	jmp     checkKeyPressing
 go_rotate:
 	call    Rotate
 	jmp     checkKeyPressing
+
 game_over:
-	jmp quit
-
-;	Close down
-;	**********
-quit:
-
+;	End Main loop
+;	*************
     ret
 ENDP
 
-Drop	proc	near
+Drop	proc
 	push	si
 	mov		si, 2*xSize			;was 80
 drop_more:
@@ -299,9 +219,14 @@ drop_more:
 	call	Down
 	pop		si
 	ret
-Drop	endp
+endp
 
-Down	proc	near
+;	Down block for one position
+;	If need - generate new one
+;	Return:
+;		ax = 0 - all is good
+;		ax = 1 - no more plase in field
+Down	proc
 	push 	si
 	mov		si, 2*xSize			;was 80
 	call	Move
@@ -349,47 +274,10 @@ no_preview:
 	mov     ax,1
 	pop 	si
 	ret
-Down	endp
-
-RandInit       proc    near
-	mov     bp,sp
-	sub     sp,4
-	mov      ah,02h
-	int      1ah
-	mov      [bp-2],cl
-	mov      [bp-4],dh
-	mov     ax,word ptr [bp-2]
-	imul    word ptr [bp-4]
-	mov     word ptr randseed,ax
-	mov     sp,bp
-	call    Rand7
-	ret
-RandInit       endp
-
-Rand7  proc    near
-	mov     ax, word ptr randseed
-	imul    word ptr randseed
-
-	test    ax,1
-	je      even_number
-	add     ax,3172
-	mov     word ptr randseed,ax
-	jmp     skip_even
-even_number:
-	shl		ax,1
-	add		ax,Score
-skip_even:
-	mov     word ptr randseed,ax
-	mov     bx,7
-	xor     dx,dx
-	div     bx
-	mov     ax, word ptr OldRand
-	mov		word ptr OldRand, dx
-	ret
-Rand7  endp
+endp
 
 ;ax - item number ???
-Print	proc	near					;ax= item_nr    di=scroffs si=T/F
+Print	proc					;ax= item_nr    di=scroffs si=T/F
 	mov		dx,0b800h
 	mov		es,dx
 	mov 	dx,06						; 06 - количество элементов в строке Items
@@ -416,9 +304,9 @@ loop2:
 	cmp		dx,4
 	jne	    loop2
 	ret
-Print	endp
+endp
 
-Bottom	proc	near      	;ax=ItemNr			di=scroffset
+Bottom	proc      	;ax=ItemNr			di=scroffset
 	mov		dx,0b800h
 	mov		es,dx
 	mov 	dx,06
@@ -460,9 +348,9 @@ not_full:
 	jne		loop_b2
 
 	ret
-Bottom	endp
+endp
 
-TestSpace	proc	near		;ax= item_nr    di=scroffs
+TestSpace	proc		;ax= item_nr    di=scroffs
 	mov		dx,0b800h
 	mov		es,dx
 	mov 	dx,06
@@ -489,9 +377,9 @@ loop1:
 bad:
 	xor		ax,ax
 	ret
-TestSpace	endp
+endp
 
-DeleteRow	proc	near				;bx=Row
+DeleteRow	proc				;bx=Row
 
 	mov		dx,0b800h
 	mov		es,dx
@@ -527,7 +415,7 @@ loop_d1:
 	ret
 DeleteRow	endp
 
-Move proc near					; si=dPos
+Move proc					; si=dPos
 	push 	si
 
 	xor		si,si
@@ -558,9 +446,9 @@ no_room:
 	pop		si
 	pop		ax
 	ret
-Move endp
+endp
 
-Rotate	proc	near
+Rotate	proc
 	push si
 	xor 	si,si
 	mov		ax,word ptr Item
@@ -594,6 +482,6 @@ no_room1:
 	call	Print
 	pop		si
 	ret
-Rotate	endp
+endp
 
 end main
