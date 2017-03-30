@@ -304,8 +304,49 @@ GenerateNewBlock PROC
 ENDP
 
 PrintCurrFigure PROC
-	;todo
+	push ax cx ds es si di
 
+	mov ax, videoStart
+	mov es, ax
+	mov ax, dataStart
+	mov ds, ax
+
+	mov ax, fieldSize				;set what figure we print
+	mul currViewNum
+	add ax, offset currentFigure
+	mov si, ax
+
+
+	mov ax, 2*(2*xSize + 2)			;пропускаем 2 первые строки + 2 певых символа третьей строки (становимся в левый верхний угол поля)
+	mov di, ax
+	
+	mov cx, yField
+
+loopAllRows:
+
+	push cx
+	mov cx, xField
+
+loopOneRow:
+	mov al, [si]
+	cmp al, emptyBlock
+	je skipWriteBlock
+
+	mov word ptr [di], figureBlock
+
+skipWriteBlock:
+	inc si
+	add di, 2					;т.к. каждый символ занимает 2 байта в видеопамяти
+
+	loop loopOneRow
+
+	add di, 2*(xSize - xField)	;для перехода в начало следующей строки
+
+	pop cx
+
+	loop loopAllRows
+
+	pop di si es ds cx ax
 	ret
 ENDP
 
