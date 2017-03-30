@@ -196,8 +196,7 @@ checkTimeLoop:
 ENDP
 
 mainGame PROC
-	call GenerateNewBlock
-
+	call GenerateNewFigure
 	mov bx, figureBlock
 	call PrintCurrFigure
 
@@ -280,8 +279,8 @@ quitRandom:
 	ret
 ENDP
 
-GenerateNewBlock PROC
-	push ax cx ds es si di
+GenerateNewFigure PROC
+	push ax cx dx ds es si di
 
 	mov ax, numOfFigures
 	call Random
@@ -301,7 +300,7 @@ GenerateNewBlock PROC
 	call Random
 	mov currViewNum, al				;сохраняем индекс текущего вида
 
-	pop di si es ds cx ax
+	pop di si es ds dx cx ax
 	ret
 ENDP
 
@@ -360,8 +359,20 @@ ENDP
 ;		ax = 0 - all is good
 ;		ax = 1 - no more plase in field
 Down proc
-	;todo
+	mov ah, 0
+	mov al, 1
+	call Move
 
+	cmp ax, 0
+	je goodQuit
+
+	call copyCurrentFigureToVirtualField
+	call GenerateNewFigure
+
+	;todo: check new figure
+
+goodQuit:
+	mov ax, 0
 	ret
 endp
 
@@ -371,6 +382,13 @@ DeleteRow proc
 	ret
 endp
 
+;	Move current block to calculated position only to one direction
+;	Input:
+;		ah - how much points current figure goes right (-1, 0, 1)
+;		al - how much points currnet figure goes down  (-1, 0, 1)
+;	Output:
+;		ax = 0 - all is good
+;		ax != 0 - we cannot do that
 Move proc
 	;todo
 
@@ -398,5 +416,34 @@ skipNulling:
 	pop bx ax
 	ret
 endp
+
+copyCurrentFigureToVirtualField PROC
+	push ax cx dx ds es si di
+
+	mov ax, dataStart
+	mov ds, ax
+	mov es, ax
+
+	xor ah, ah
+	mov al, currViewNum
+	mov cx, fieldSize			;в cx - размер одного вида фигур
+	mul cx						;теперь имеем смещение фигуры относительно начала currentFigure
+
+	mov si, offset currentFigure
+	add si, ax					;получаем реальное смещение в памяти, где сгенерированная фигура
+
+	mov di, offset virtualField
+
+	;сам процесс дозаписи
+loopAddFigure:
+	mov al, [si]
+	or [di], al 				;переписали, если что-то где-то было
+	inc si
+	inc di
+	loop loopAddFigure
+
+	pop di si es ds dx cx ax
+	ret
+ENDP
 
 end main
