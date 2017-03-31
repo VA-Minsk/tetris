@@ -358,15 +358,20 @@ ENDP
 ;		ax = 1 - no more plase in field
 Down proc
 	push cx si ds
-	jmp goodQuit	;todo: delete (temporary)
 	call MoveDown
 
 	cmp ax, 0
 	je goodQuit
 
 	call copyCurrentFigureToVirtualField
-	;todo: delete rows
+
+	mov bx, emptyBlock
+	call PrintCurrFigure
+	call DeleteRow
 	call GenerateNewFigure
+
+	mov bx, fullBlock
+	call PrintCurrFigure
 
 	mov ax, dataStart
 	mov ds, ax
@@ -378,7 +383,6 @@ Down proc
 
 goodQuit:
 	mov ax, 0
-
 DownToQuit:
 	pop ds si cx
 	ret
