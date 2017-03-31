@@ -362,7 +362,7 @@ ENDP
 ;		ax = 1 - no more plase in field
 Down proc
 	push cx si ds
-
+	jmp goodQuit	;todo: delete
 	mov ah, 0
 	mov al, 1
 	call Move
@@ -432,14 +432,14 @@ Move proc
 	push ds es si di
 
 	cmp ah, 0
-	je moveDown
+	je moveDownPoint
 	cmp al, 0
 	je MoveSucceedExit
 	jl MoveErrorExit
 
 	;;todo
 
-moveDown:
+moveDownPoint:
 	;mov
 	;todo
 	
@@ -451,6 +451,38 @@ MoveSucceedExit:
 	mov ax, 0
 MoveExit:
 	pop di si es ds
+	ret
+endp
+;	Output:
+;		ax = 0 - all is good
+;		ax != 0 - we cannot do that
+MoveDown proc
+	push cx ds es si di
+	;todo
+
+	call getCurrentFigure
+	add si, cx
+	;todo: set D flag
+	mov cx, xField
+	mov al, emptyBlock
+
+	;mov cx, maxViewNum
+
+	;mov si, 
+
+;MoveDownCheckLoop:	
+	
+	
+
+;	loop MoveDownCheckLoop
+
+MoveDownErrorExit:
+	mov ax, 1
+	jmp MoveDownExit
+MoveDownSucceedExit:
+	mov ax, 0
+MoveDownExit:
+	pop di si es ds cx
 	ret
 endp
 
