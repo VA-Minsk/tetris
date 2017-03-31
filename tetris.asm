@@ -64,7 +64,7 @@ secondF	dw fieldSpacing, xSize - xField - 5 dup(grSpc), VWallSymbol, space
 		dw xSize dup(space)
 
 ;	figures
-figureBlock equ grSym
+figureBlock equ 0A40h
 
 maxViewNum equ 4
 currViewNum db 0
@@ -84,10 +84,10 @@ numOfFigures equ 7
 
 
 ;	квадратик
-figures	db xField dup(emptyBlock), 12 dup(emptyBlock), 2 dup(fullBlock), 11 dup(emptyBlock),  12 dup(emptyBlock), 2 dup(fullBlock), 11 dup(emptyBlock), (fieldSize - 2*xField) dup(emptyBlock)
-		db xField dup(emptyBlock), 12 dup(emptyBlock), 2 dup(fullBlock), 11 dup(emptyBlock),  12 dup(emptyBlock), 2 dup(fullBlock), 11 dup(emptyBlock), (fieldSize - 2*xField) dup(emptyBlock)
-		db xField dup(emptyBlock), 12 dup (emptyBlock), 2 dup (fullBlock), 11 dup (emptyBlock),  12 dup (emptyBlock), 2 dup (fullBlock), 11 dup (emptyBlock), (fieldSize - 2*xField) dup(emptyBlock)
-		db xField dup(emptyBlock), 12 dup (emptyBlock), 2 dup (fullBlock), 11 dup (emptyBlock),  12 dup (emptyBlock), 2 dup (fullBlock), 11 dup (emptyBlock), (fieldSize - 2*xField) dup(emptyBlock)
+figures	db xField dup(emptyBlock), 12 dup(emptyBlock), 2 dup(fullBlock), 11 dup(emptyBlock),  12 dup(emptyBlock), 2 dup(fullBlock), 11 dup(emptyBlock), (fieldSize - 3*xField) dup(emptyBlock)
+		db xField dup(emptyBlock), 12 dup(emptyBlock), 2 dup(fullBlock), 11 dup(emptyBlock),  12 dup(emptyBlock), 2 dup(fullBlock), 11 dup(emptyBlock), (fieldSize - 3*xField) dup(emptyBlock)
+		db xField dup(emptyBlock), 12 dup (emptyBlock), 2 dup (fullBlock), 11 dup (emptyBlock),  12 dup (emptyBlock), 2 dup (fullBlock), 11 dup (emptyBlock), (fieldSize - 3*xField) dup(emptyBlock)
+		db xField dup(emptyBlock), 12 dup (emptyBlock), 2 dup (fullBlock), 11 dup (emptyBlock),  12 dup (emptyBlock), 2 dup (fullBlock), 11 dup (emptyBlock), (fieldSize - 3*xField) dup(emptyBlock)
 	;	I
 		db 2*xField dup(emptyBlock), 11 dup(emptyBlock), 4 dup(fullBlock), 10 dup(emptyBlock), (fieldSize - xField*3) dup(emptyBlock)
 		db 12 dup(emptyBlock), 1 dup(fullBlock), 12 dup(emptyBlock), 12 dup(emptyBlock), 1 dup(fullBlock), 12 dup(emptyBlock), 12 dup(emptyBlock), 1 dup(fullBlock), 12 dup(emptyBlock), 12 dup(emptyBlock), 1 dup(fullBlock), 12 dup(emptyBlock), (fieldSize - xField*4) dup(emptyBlock)
@@ -257,8 +257,8 @@ ENDP
 Random PROC
 	push bx cx dx
 
-	mov cx, ax			;в cx - max value
-	cmp cx, 0
+	mov bx, ax			;в bx - max value
+	cmp bx, 0
 	je quitRandom
 
 	;считываем текущее время
@@ -270,7 +270,7 @@ Random PROC
 	mul dh 				;в ax теперь число для рандома
 
 	xor dx, dx			;чтобы не словить переполнение и получить хороший результат
-	div cx				;в dx - результат (случайное число);
+	div bx				;в dx - результат (случайное число);
 
 	mov ax, dx
 
@@ -316,11 +316,7 @@ PrintCurrFigure PROC
 	mov ax, dataStart
 	mov ds, ax
 
-	mov ax, fieldSize				;set what figure we print
-	mul currViewNum
-	add ax, offset currentFigure
-	mov si, ax
-
+	call getCurrentFigure
 
 	mov ax, 2*(2*xSize + 2)			;пропускаем 2 первые строки + 2 певых символа третьей строки (становимся в левый верхний угол поля)
 	mov di, ax
@@ -337,7 +333,7 @@ loopOneRow:
 	cmp al, emptyBlock
 	je skipWriteBlock
 
-	mov word ptr [di], bx
+	mov word ptr es:[di], bx
 
 skipWriteBlock:
 	inc si
