@@ -84,40 +84,40 @@ numOfFigures equ 7
 
 
 ;	квадратик
-figures	db fieldSize dup(emptyBlock)
-		db fieldSize dup(emptyBlock)
-		db fieldSize dup(emptyBlock)
-		db fieldSize dup(emptyBlock)
+figures	db xField dup(emptyBlock), 12 dup(emptyBlock), 2 dup(fullBlock), 11 dup(emptyBlock),  12 dup(emptyBlock), 2 dup(fullBlock), 11 dup(emptyBlock), (fieldSize - 2*xField) dup(emptyBlock)
+		db xField dup(emptyBlock), 12 dup(emptyBlock), 2 dup(fullBlock), 11 dup(emptyBlock),  12 dup(emptyBlock), 2 dup(fullBlock), 11 dup(emptyBlock), (fieldSize - 2*xField) dup(emptyBlock)
+		db xField dup(emptyBlock), 12 dup (emptyBlock), 2 dup (fullBlock), 11 dup (emptyBlock),  12 dup (emptyBlock), 2 dup (fullBlock), 11 dup (emptyBlock), (fieldSize - 2*xField) dup(emptyBlock)
+		db xField dup(emptyBlock), 12 dup (emptyBlock), 2 dup (fullBlock), 11 dup (emptyBlock),  12 dup (emptyBlock), 2 dup (fullBlock), 11 dup (emptyBlock), (fieldSize - 2*xField) dup(emptyBlock)
 	;	I
-		db fieldSize dup(emptyBlock)
-		db fieldSize dup(emptyBlock)
-		db fieldSize dup(emptyBlock)
-		db fieldSize dup(emptyBlock)
+		db 2*xField dup(emptyBlock), 11 dup(emptyBlock), 4 dup(fullBlock), 10 dup(emptyBlock), (fieldSize - xField*3) dup(emptyBlock)
+		db 12 dup(emptyBlock), 1 dup(fullBlock), 12 dup(emptyBlock), 12 dup(emptyBlock), 1 dup(fullBlock), 12 dup(emptyBlock), 12 dup(emptyBlock), 1 dup(fullBlock), 12 dup(emptyBlock), 12 dup(emptyBlock), 1 dup(fullBlock), 12 dup(emptyBlock), (fieldSize - xField*4) dup(emptyBlock)
+		db xField dup(emptyBlock), 11 dup(emptyBlock), 4 dup(fullBlock), 10 dup(emptyBlock), (fieldSize - xField*2) dup(emptyBlock) 
+		db 13 dup(emptyBlock), 1 dup(fullBlock), 11 dup(emptyBlock), 13 dup(emptyBlock), 1 dup(fullBlock), 11 dup(emptyBlock), 13 dup(emptyBlock), 1 dup(fullBlock), 11 dup(emptyBlock), 13 dup(emptyBlock), 1 dup(fullBlock), 11 dup(emptyBlock), (fieldSize - xField*4) dup(emptyBlock)
 	;	T
-		db fieldSize dup(emptyBlock)
-		db fieldSize dup(emptyBlock)
-		db fieldSize dup(emptyBlock)
-		db fieldSize dup(emptyBlock)
+		db xField dup(emptyBlock), 11 dup(emptyBlock), 3 dup(fullBlock), 11 dup(emptyBlock), 12 dup(emptyBlock), 1 dup(fullBlock), 12 dup(emptyBlock), (fieldSize - xField*3) dup(emptyBlock)
+		db xField dup(emptyBlock), 12 dup(emptyBlock), 1 dup(fullBlock), 12 dup(emptyBlock), 12 dup(emptyBlock), 2 dup(fullBlock), 11 dup(emptyBlock), 12 dup(emptyBlock), 1 dup(fullBlock), 12 dup(emptyBlock), (fieldSize - xField*4) dup(emptyBlock)
+		db xField dup(emptyBlock), 13 dup(emptyBlock), 1 dup(fullBlock), 11 dup(emptyBlock), 12 dup(emptyBlock), 3 dup(fullBlock), 10 dup(emptyBlock), (fieldSize - xField*3) dup(emptyBlock)
+		db 13 dup(emptyBlock), 1 dup(fullBlock), 11 dup(emptyBlock), 12 dup(emptyBlock), 2 dup(fullBlock), 11 dup(emptyBlock), 13 dup(emptyBlock), 1 dup(fullBlock), 11 dup(emptyBlock), (fieldSize - xField*3) dup(emptyBlock)
 	;	z
-		db fieldSize dup(emptyBlock)
-		db fieldSize dup(emptyBlock)
-		db fieldSize dup(emptyBlock)
-		db fieldSize dup(emptyBlock)
+		db xField dup(emptyBlock), 12 dup(emptyBlock), 2 dup(fullBlock), 11 dup(emptyBlock), 13 dup(emptyBlock), 2 dup(fullBlock), 10 dup(emptyBlock), (fieldSize - xField*3) dup(emptyBlock)
+		db xField dup(emptyBlock), 13 dup(emptyBlock), 1 dup(fullBlock), 11 dup(emptyBlock), 12 dup(emptyBlock), 2 dup(fullBlock), 11 dup(emptyBlock), 12 dup(emptyBlock), 1 dup(fullBlock), 12 dup(emptyBlock), (fieldSize - xField*4) dup(emptyBlock)
+		db xField dup(emptyBlock), 11 dup(emptyBlock), 2 dup(fullBlock), 12 dup(emptyBlock), 12 dup(emptyBlock), 2 dup(fullBlock), 11 dup(emptyBlock), (fieldSize - xField*3) dup(emptyBlock)
+		db 13 dup(emptyBlock), 1 dup(fullBlock), 11 dup(emptyBlock), 12 dup(emptyBlock), 2 dup(fullBlock), 11 dup(emptyBlock), 12 dup(emptyBlock), 1 dup(fullBlock), 12 dup(emptyBlock), (fieldSize - xField*3) dup(emptyBlock)
 	;	z зеркальное
-		db fieldSize dup(emptyBlock)
-		db fieldSize dup(emptyBlock)
-		db fieldSize dup(emptyBlock)
-		db fieldSize dup(emptyBlock)
+		db xField dup(emptyBlock), 12 dup(emptyBlock), 2 dup(fullBlock), 11 dup(emptyBlock), 11 dup(emptyBlock), 2 dup(fullBlock), 12 dup(emptyBlock), (fieldSize - xField*3) dup(emptyBlock)
+		db 12 dup(emptyBlock), 1 dup(fullBlock), 12 dup(emptyBlock), 12 dup(emptyBlock), 2 dup(fullBlock), 11 dup(emptyBlock), 13 dup(emptyBlock), 1 dup(fullBlock), 11 dup(emptyBlock), (fieldSize - xField*3) dup(emptyBlock)
+		db xField dup(emptyBlock), 13 dup(emptyBlock), 2 dup(fullBlock), 10 dup(emptyBlock), 12 dup(emptyBlock), 2 dup(fullBlock), 11 dup(emptyBlock), (fieldSize - xField*3) dup(emptyBlock)
+		db xField dup(emptyBlock), 12 dup(emptyBlock), 1 dup(fullBlock), 12 dup(emptyBlock), 12 dup(emptyBlock), 2 dup(fullBlock), 11 dup(emptyBlock), 13 dup(emptyBlock), 1 dup(fullBlock), 11 dup(emptyBlock), (fieldSize - xField*4) dup(emptyBlock)
 	;	Г
-		db fieldSize dup(emptyBlock)
-		db fieldSize dup(emptyBlock)
-		db fieldSize dup(emptyBlock)
-		db fieldSize dup(emptyBlock)
+		db xField dup(emptyBlock), 12 dup(emptyBlock), 2 dup(fullBlock), 11 dup(emptyBlock), 12 dup(emptyBlock), 1 dup(fullBlock), 12 dup(emptyBlock),  12 dup(emptyBlock), 1 dup(fullBlock), 12 dup(emptyBlock), (fieldSize - xField*4) dup(emptyBlock)
+		db xField dup(emptyBlock), 11 dup(emptyBlock), 3 dup(fullBlock), 11 dup(emptyBlock), 13 dup(emptyBlock), 1 dup(fullBlock), 11 dup(emptyBlock), (fieldSize - xField*3) dup(emptyBlock)
+		db 13 dup(emptyBlock), 1 dup(fullBlock), 11 dup(emptyBlock), 13 dup(emptyBlock), 1 dup(fullBlock), 11 dup(emptyBlock),  12 dup(emptyBlock), 2 dup(fullBlock), 11 dup(emptyBlock), (fieldSize - xField*3) dup(emptyBlock)
+		db xField dup(emptyBlock), 12 dup(emptyBlock), 1 dup(fullBlock), 12 dup(emptyBlock), 12 dup(emptyBlock), 3 dup(fullBlock), 10 dup(emptyBlock), (fieldSize - xField*3) dup(emptyBlock)
 	;	Г зеркальное
-		db fieldSize dup(emptyBlock)
-		db fieldSize dup(emptyBlock)
-		db fieldSize dup(emptyBlock)
-		db fieldSize dup(emptyBlock)
+		db 12 dup(emptyBlock), 1 dup(fullBlock), 12 dup(emptyBlock), 12 dup(emptyBlock), 1 dup(fullBlock), 12 dup(emptyBlock),  12 dup(emptyBlock), 2 dup(fullBlock), 11 dup(emptyBlock), (fieldSize - xField*3) dup(emptyBlock)
+		db xField dup(emptyBlock), 12 dup(emptyBlock), 3 dup(fullBlock), 10 dup(emptyBlock), 12 dup(emptyBlock), 1 dup(fullBlock), 12 dup(emptyBlock), (fieldSize - xField*3) dup(emptyBlock)
+		db xField dup(emptyBlock), 12 dup(emptyBlock), 2 dup(fullBlock), 11 dup(emptyBlock), 13 dup(emptyBlock), 1 dup(fullBlock), 11 dup(emptyBlock),  13 dup(emptyBlock), 1 dup(fullBlock), 11 dup(emptyBlock), (fieldSize - xField*4) dup(emptyBlock)
+		db xField dup(emptyBlock), 13 dup(emptyBlock), 1 dup(fullBlock), 11 dup(emptyBlock), 11 dup(emptyBlock), 3 dup(fullBlock), 11 dup(emptyBlock), (fieldSize - xField*3) dup(emptyBlock)
 
 .code
 
