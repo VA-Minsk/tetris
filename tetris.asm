@@ -365,12 +365,10 @@ Down proc
 
 	call copyCurrentFigureToVirtualField
 
-	mov bx, emptyBlock
-	call PrintCurrFigure
 	call DeleteRow
 	call GenerateNewFigure
 
-	mov bx, fullBlock
+	mov bx, figureBlock
 	call PrintCurrFigure
 
 	mov ax, dataStart
@@ -405,10 +403,15 @@ checkFigureForCrossing PROC
 checkCrossingLoop:
 	mov ax, [si]
 	and ax, [di]
-	jnz qutiCrossingProc
+	jnz quitCrossingProcBad
 	loop checkCrossingLoop
 
-qutiCrossingProc:
+	mov ax, 0
+	jmp quitCrossingProc
+
+quitCrossingProcBad:
+	mov ax, 1
+quitCrossingProc:
 	pop di es cx
 	ret
 ENDP
@@ -465,7 +468,7 @@ CheckDownRowForEmpty PROC
 	std									;двигаемся с конца в начало
 	mov cx, xField
 	mov al, emptyBlock
-	repe scasw
+	repe scasb
 
 	mov ax, cx							;записываем количество несверенных символов (0 => ничего не нашли)
 
@@ -549,7 +552,7 @@ MoveDownContinueLoop:
 	rep movsb
 
 	;печатаем новое
-	mov bx, fullBlock
+	mov bx, figureBlock
 	call PrintCurrFigure
 	jmp MoveDownSucceedExit
 
