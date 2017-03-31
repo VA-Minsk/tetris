@@ -358,10 +358,8 @@ ENDP
 ;		ax = 1 - no more plase in field
 Down proc
 	push cx si ds
-	jmp goodQuit	;todo: delete
-	mov ah, 0
-	mov al, 1
-	call Move
+	jmp goodQuit	;todo: delete (temporary)
+	call MoveDown
 
 	cmp ax, 0
 	je goodQuit
@@ -449,28 +447,107 @@ MoveExit:
 	pop di si es ds
 	ret
 endp
+
+;	Input:
+;		es:di - start of requring block
 ;	Output:
-;		ax = 0 - all is good
+;		ax = 0 - row is empty
+;		ax != 0 - row is not empty
+CheckDownRowForEmpty PROC
+	push cx di
+	pushf
+
+	add di, fieldSize
+	std									;двигаемся с конца в начало
+	mov cx, xField
+	mov al, emptyBlock
+	repe scasw
+
+	mov ax, cx							;записываем количество несверенных символов (0 => ничего не нашли)
+
+	popf
+	pop di cx
+	ret
+ENDP
+
+;	Output:
+;		ax = 0 - all is good (we do that)
 ;		ax != 0 - we cannot do that
 MoveDown proc
 	push cx ds es si di
 	;todo
 
+	mov ax, dataStart
+	mov ds, ax
+	mov es, ax
+
 	call getCurrentFigure
-	add si, cx
-	;todo: set D flag
+	mov di, si 							;для сравнения
+	call CheckDownRowForEmpty
+
+	cmp ax, 0							;уточняем, пустая ли нижняя строка
+	jne MoveDownErrorExit
+
+	;теперь нужно опустить всю группу видов, проверяя на "пересечение" с полом (низом поля)
+	mov cx, maxViewNum
+	mov si, offset currentFigure
+	mov di, offset futureFigure
+
+loopMoveDownAllBlocks:
+	push cx
+
+	push di
+	mov di, si
+	call CheckDownRowForEmpty
+	pop di
+
+	cmp ax, 0							;уточняем, пустая ли нижняя строка
+	jne MoveDownWriteFullFieldView
+
+	;обнуляем верхнюю строку в futureFigure (для каждого поля, которое можем опустить)
 	mov cx, xField
 	mov al, emptyBlock
+	rep stosb
 
-	;mov cx, maxViewNum
+	;теперь нужно пеерзаписать поле
+	mov cx, fieldSize - xField
+	rep movsb
 
-	;mov si, 
+	add si, xField
+	;si и di готовы к следующей итерации
+	jmp MoveDownContinueLoop
 
-;MoveDownCheckLoop:	
-	
-	
+MoveDownWriteFullFieldView:
+	mov cx, fieldSize
+	rep movsb
+	;si и di готовы к следующей итерации
 
-;	loop MoveDownCheckLoop
+MoveDownContinueLoop:
+	pop cx
+	loop loopMoveDownAllBlocks
+
+	call getCurrentFigure
+	add si, offset futureFigure - offset currentFigure
+	;теперь в si адрес новой версии фигуры
+
+	call checkFigureForCrossing
+	cmp ax, 0
+	jne MoveDownErrorExit
+
+	;дошли сюда - значит текущий вид можно спокойно опускать
+	;удаляем старое
+	mov bx, emptyBlock
+	call PrintCurrFigure
+
+	mov cx, oneFigureBigSize
+	mov si, offset futureFigure
+	mov di, offset currentFigure
+	rep movsb
+
+	;печатаем новое
+	mov bx, fullBlock
+	call PrintCurrFigure
+	jmp MoveDownSucceedExit
 
 MoveDownErrorExit:
 	mov ax, 1
@@ -483,7 +560,10 @@ MoveDownExit:
 endp
 
 Rotate	proc
-	push ax bx
+	push ax bx ds si
+
+	mov ax, dataStart
+	mov ds, ax
 
 	mov bx, space			;delete old figure
 	call PrintCurrFigure
@@ -497,10 +577,24 @@ Rotate	proc
 	mov currViewNum, 0		;loop indexing
 
 skipNulling:
+	call getCurrentFigure
+	call checkFigureForCrossing
+	cmp ax, 0
+	je SkipRevertRotate
+
+	;change current figure index (revert)
+	dec currViewNum
+	mov al, currViewNum
+	cmp al, 0
+	jge SkipRevertRotate
+
+	mov currViewNum, maxViewNum - 1		;loop indexing
+
+SkipRevertRotate:
 	mov bx, figureBlock			;print new view of figure
 	call PrintCurrFigure
 
-	pop bx ax
+	pop si ds bx ax
 	ret
 endp
 
