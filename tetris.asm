@@ -618,8 +618,8 @@ copyCurrentFigureToVirtualField PROC
 
 	;сам процесс дозаписи
 loopAddFigure:
-	mov al, [si]
-	or [di], al 				;переписали, если что-то где-то было
+	mov al, ds:[si]
+	or es:[di], al 				;переписали, если что-то где-то было
 	inc si
 	inc di
 	loop loopAddFigure
