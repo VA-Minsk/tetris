@@ -28,6 +28,8 @@ oneMemoBlock equ 2
 videoStart dw 0B800h
 dataStart dw 0000h
 
+sleepTime equ 5
+
 space equ 0020h
 VWallSymbol equ 0FBAh
 HWallSymbol equ 0FCDh
@@ -183,7 +185,7 @@ Sleep PROC
 
 	GetTimerValue
 
-	add dx, 3
+	add dx, sleepTime
 	mov bx, dx
 
 checkTimeLoop:
@@ -447,7 +449,8 @@ ENDP
 ;		ax != 0 - we cannot do that
 MoveDown proc
 	push cx ds es si di
-	;todo
+
+	;todo: fix bug (2 left blocks)
 
 	mov ax, dataStart
 	mov ds, ax
@@ -611,6 +614,7 @@ getCurrentFigure PROC
 	ret
 ENDP
 
+;------------------------------------------------MOVE LEFT-----------------------------
 
 ;	Input:
 ;		es:di - start of requring block
@@ -647,7 +651,6 @@ ENDP
 ;		ax != 0 - we cannot do that
 MoveLeft proc
 	push cx ds es si di
-	;todo
 
 	mov ax, dataStart
 	mov ds, ax
@@ -675,8 +678,6 @@ loopMoveLeftAllBlocks:
 
 	cmp ax, 0							;уточняем, пустая ли нижняя строка
 	jne MoveLeftWriteFullFieldView
-
-	;todo
 
 	;нужно перезаписать поле
 	inc si
@@ -735,8 +736,126 @@ MoveLeftExit:
 	ret
 endp
 
+;------------------------------------------MOVE RIGHT------------------------
+
+;	Input:
+;		es:di - start of requring block
+;	Output:
+;		ax = 0 - column is empty
+;		ax != 0 - column is not empty
+CheckRightColumnForEmpty PROC
+	push cx di
+	pushf
+
+	cld									;двигаемся с начала в конец
+	mov cx, yField
+	mov al, emptyBlock
+	add di, xField - 1					;становимся в конец строки
+
+checkRightColumnLoop:
+	cmp al, es:[di]
+	jne checkRightColumnEndLoop
+
+	add di, xField
+
+	loop checkRightColumnLoop
+
+checkRightColumnEndLoop:
+
+	mov ax, cx							;записываем количество несверенных символов (0 => ничего не нашли)
+
+	popf
+	pop di cx
+	ret
+ENDP
+
+;	Output:
+;		ax = 0 - all is good (we do that)
+;		ax != 0 - we cannot do that
 MoveRight proc
-	;todo
+	push cx ds es si di
+
+	mov ax, dataStart
+	mov ds, ax
+	mov es, ax
+
+	call getCurrentFigure
+	mov di, si 							;для сравнения
+	call CheckRightColumnForEmpty
+
+	cmp ax, 0							;уточняем, пустая ли нижняя строка
+	jne MoveRightErrorExit
+
+	;теперь нужно подвинуть вправо всю группу видов, проверяя на "пересечение" с полом (низом поля)
+	mov cx, maxViewNum
+	mov si, offset currentFigure
+	mov di, offset futureFigure
+
+loopMoveRightAllBlocks:
+	push cx
+
+	push di
+	mov di, si
+	call CheckRightColumnForEmpty
+	pop di
+
+	cmp ax, 0							;уточняем, пустая ли нижняя строка
+	jne MoveRightWriteFullFieldView
+
+	;обнуляем левый верхний угол в futureFigure (для каждого поля, которое можем подвинуть)
+	mov al, emptyBlock
+	mov es:[di], al
+
+	;нужно перезаписать поле
+	inc di
+	cld 								;движение слева направо (т.к. разные поля, можем себе позволить)
+	mov cx, fieldSize - 1
+	rep movsb
+
+	inc si
+	;si и di готовы к следующей итерации
+	jmp MoveRightContinueLoop
+
+MoveRightWriteFullFieldView:
+	mov cx, fieldSize
+	rep movsb
+	;si и di готовы к следующей итерации
+
+MoveRightContinueLoop:
+	pop cx
+	loop loopMoveRightAllBlocks
+
+	call getCurrentFigure
+	add si, offset futureFigure - offset currentFigure
+	;теперь в si адрес новой версии фигуры
+
+	call checkFigureForCrossing
+	cmp ax, 0
+	jne MoveRightErrorExit
+
+	;дошли сюда - значит текущий вид можно спокойно двигать влево
+	;удаляем старое
+	mov bx, emptyBlock
+	call PrintCurrFigure
+
+	;переписываем все поле из future в current
+	mov cx, oneFigureBigSize
+	mov si, offset futureFigure
+	mov di, offset currentFigure
+	rep movsb
+
+	;печатаем новое
+	mov bx, figureBlock
+	call PrintCurrFigure
+	jmp MoveRightSucceedExit
+
+MoveRightErrorExit:
+	mov ax, 1
+	jmp MoveRightExit
+MoveRightSucceedExit:
+	mov ax, 0
+MoveRightExit:
+	pop di si es ds cx
 	ret
 endp
 
