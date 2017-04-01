@@ -22,7 +22,7 @@ KExit equ 01h 		;ESC key
 xSize equ 80
 ySize equ 18
 xField equ 25           ;size of playground
-yField equ 14
+yField equ 15
 oneMemoBlock equ 2
 
 videoStart dw 0B800h
@@ -230,14 +230,10 @@ newIteration:
 	jmp		checkKeyPressing
 
 go_left:
-	mov		ah, -1
-	mov 	al, 0
-	call    Move
+	call    MoveLeft
 	jmp     checkKeyPressing
 go_right:
-	mov		ah, 1
-	mov 	al, 0
-	call    Move
+	call    MoveRight
 	jmp     checkKeyPressing
 go_rotate:
 	call    Rotate
@@ -421,39 +417,6 @@ ENDP
 DeleteRow proc
 	;todo
 
-	ret
-endp
-
-;	Move current block to calculated position only to one direction
-;	Input:
-;		ah - how much points current figure goes right (-1, 0, 1)
-;		al - how much points currnet figure goes down  (0, 1)
-;	Output:
-;		ax = 0 - all is good
-;		ax != 0 - we cannot do that
-Move proc
-	push ds es si di
-
-	cmp ah, 0
-	je moveDownPoint
-	cmp al, 0
-	je MoveSucceedExit
-	jl MoveErrorExit
-
-	;;todo
-
-moveDownPoint:
-	;mov
-	;todo
-	
-
-MoveErrorExit:
-	mov ax, 1
-	jmp MoveExit
-MoveSucceedExit:
-	mov ax, 0
-MoveExit:
-	pop di si es ds
 	ret
 endp
 
@@ -648,5 +611,133 @@ getCurrentFigure PROC
 	ret
 ENDP
 
+
+;	Input:
+;		es:di - start of requring block
+;	Output:
+;		ax = 0 - column is empty
+;		ax != 0 - column is not empty
+CheckLeftColumnForEmpty PROC
+	push cx di
+	pushf
+
+	cld									;двигаемся с начала в конец
+	mov cx, yField
+	mov al, emptyBlock
+
+checkLeftColumnLoop:
+	cmp al, es:[di]
+	jne checkLeftColumnEndLoop
+
+	add di, xField
+
+	loop checkLeftColumnLoop
+
+checkLeftColumnEndLoop:
+
+	mov ax, cx							;записываем количество несверенных символов (0 => ничего не нашли)
+
+	popf
+	pop di cx
+	ret
+ENDP
+
+;	Output:
+;		ax = 0 - all is good (we do that)
+;		ax != 0 - we cannot do that
+MoveLeft proc
+	push cx ds es si di
+	;todo
+
+	mov ax, dataStart
+	mov ds, ax
+	mov es, ax
+
+	call getCurrentFigure
+	mov di, si 							;для сравнения
+	call CheckLeftColumnForEmpty
+
+	cmp ax, 0							;уточняем, пустая ли нижняя строка
+	jne MoveLeftErrorExit
+
+	;теперь нужно подвинуть влево всю группу видов, проверяя на "пересечение" с полом (низом поля)
+	mov cx, maxViewNum
+	mov si, offset currentFigure
+	mov di, offset futureFigure
+
+loopMoveLeftAllBlocks:
+	push cx
+
+	push di
+	mov di, si
+	call CheckLeftColumnForEmpty
+	pop di
+
+	cmp ax, 0							;уточняем, пустая ли нижняя строка
+	jne MoveLeftWriteFullFieldView
+
+	;todo
+
+	;нужно перезаписать поле
+	inc si
+	cld 								;движение слева направо (это очень важно)
+	mov cx, fieldSize - 1
+	rep movsb
+
+	;обнуляем правый нижний угол в futureFigure (для каждого поля, которое можем подвинуть)
+	mov al, emptyBlock
+	mov es:[di], al
+
+	inc di
+	;si и di готовы к следующей итерации
+	jmp MoveLeftContinueLoop
+
+MoveLeftWriteFullFieldView:
+	mov cx, fieldSize
+	rep movsb
+	;si и di готовы к следующей итерации
+
+MoveLeftContinueLoop:
+	pop cx
+	loop loopMoveLeftAllBlocks
+
+	call getCurrentFigure
+	add si, offset futureFigure - offset currentFigure
+	;теперь в si адрес новой версии фигуры
+
+	call checkFigureForCrossing
+	cmp ax, 0
+	jne MoveLeftErrorExit
+
+	;дошли сюда - значит текущий вид можно спокойно двигать влево
+	;удаляем старое
+	mov bx, emptyBlock
+	call PrintCurrFigure
+
+	;переписываем все поле из future в current
+	mov cx, oneFigureBigSize
+	mov si, offset futureFigure
+	mov di, offset currentFigure
+	rep movsb
+
+	;печатаем новое
+	mov bx, figureBlock
+	call PrintCurrFigure
+	jmp MoveLeftSucceedExit
+
+MoveLeftErrorExit:
+	mov ax, 1
+	jmp MoveLeftExit
+MoveLeftSucceedExit:
+	mov ax, 0
+MoveLeftExit:
+	pop di si es ds cx
+	ret
+endp
+
+MoveRight proc
+	;todo
+	ret
+endp
 
 end main
