@@ -401,9 +401,11 @@ checkFigureForCrossing PROC
 	mov cx, fieldSize
 
 checkCrossingLoop:
-	mov ax, [si]
-	and ax, [di]
+	mov al, [si]
+	and al, [di]
 	jnz quitCrossingProcBad
+	inc si
+	inc di
 	loop checkCrossingLoop
 
 	mov ax, 0
