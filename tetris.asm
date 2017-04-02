@@ -431,13 +431,15 @@ CheckDownRowForEmpty PROC
 	push cx di
 	pushf
 
-	add di, fieldSize
+	add di, fieldSize - 1				;становимся в правый нижний участок поля
 	std									;двигаемся с конца в начало
 	mov cx, xField
 	mov al, emptyBlock
 	repe scasb
 
-	mov ax, cx							;записываем количество несверенных символов (0 => ничего не нашли)
+;todo: fix
+	xor ah, ah
+	sub al, es:[di + 1]						;если символы совпадут - разница будет 0
 
 	popf
 	pop di cx
