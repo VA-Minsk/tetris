@@ -28,7 +28,7 @@ oneMemoBlock equ 2
 videoStart dw 0B800h
 dataStart dw 0000h
 
-sleepTime equ 5
+sleepTime equ 10
 
 space equ 0020h
 VWallSymbol equ 0FBAh
@@ -363,7 +363,7 @@ Down proc
 
 	call copyCurrentFigureToVirtualField
 
-	call DeleteRow
+	call DeleteRows
 	call GenerateNewFigure
 
 	mov bx, figureBlock
@@ -416,11 +416,132 @@ quitCrossingProc:
 	ret
 ENDP
 
-DeleteRow proc
-	;todo
+DeleteRows proc
+	push ax cx ds es si di
 
+	mov ax, dataStart
+	mov ds, ax
+	mov es, ax
+
+	;save current virtual field to currentFigure
+	call getCurrentFigure
+	mov di, si
+	mov ax, offset virtualField
+	mov si, ax
+	rep movsb
+
+	;hide field
+	mov bx, emptyBlock
+	call PrintCurrFigure
+
+	;todo: change field in currentFigure
+	mov cx, yField
+	;get current field to check
+	call getCurrentFigure
+	mov di, si
+	xor dl, dl
+
+DeleteRowsLoopAllRows:
+	push cx
+
+	mov ah, xField
+	mov al, dl
+	mov bl, fullBlock
+	call CheckRowForEmpty
+	cmp ax, 0
+	jne DeleteRowsLoopAllRowsEnd
+
+	;если попали сюда -> строку нужно удалить
+	mov ah, xField
+	mov al, dl
+	mov bl, emptyBlock
+	call DeleteOneRow
+
+DeleteRowsLoopAllRowsEnd:
+	inc dl
+	pop cx
+	loop DeleteRowsLoopAllRows
+
+	;show field
+	mov bx, figureBlock
+	call PrintCurrFigure
+	
+	;save field with deleted rows back
+	call getCurrentFigure
+	mov ax, offset virtualField
+	mov di, ax
+	rep movsb
+	
+	pop di si es ds cx ax
 	ret
 endp
+
+;	Input:
+;		es:di - start of requring block
+;		al - number of requring row (start indexing from 0)
+;		ah - length of each row
+;		bl - what will be empty symbol
+DeleteOneRow PROC
+	push ax cx si di
+	pushf
+
+	xor ch, ch
+	mov cl, ah
+	xor ah, ah
+	mul cl 					;теперь в ax смещение от начала поля
+	add di, ax				;становимся в начало строки для удаления
+	dec di					;теперь мы на первой неудаляемом символе
+	mov si, di				;это - источник
+
+	add di, cx				;становимся на последний удаляемый символ
+
+	push cx					;сохраняем размер одной строки
+	sub ax, cx				;отнимаем лишнюю строку
+	mov cx, ax				;устанавливаем количество итераций (на одну строку меньше пока что)
+
+	std									;двигаемся с конца в начало
+	rep movsb
+	;перезаписали основную часть. Теперь нужно занулить верхнюю строку
+
+	pop cx					;сколько символов нужно заменить на пустые
+	mov al, bl
+	repe movsb
+	;заменили и верхнюю строку
+
+	popf
+	pop di si cx ax
+	ret
+ENDP
+
+;	Input:
+;		es:di - start of requring block
+;		al - number of requring row (start indexing from 0)
+;		ah - length of each row
+;		bl - what will be empty symbol
+;	Output:
+;		ax = 0 - row is empty
+;		ax != 0 - row is not empty
+CheckRowForEmpty PROC
+	push cx di
+	pushf
+
+	xor ch, ch
+	mov cl, ah
+	xor ah, ah
+	mul cl 					;теперь в ax смещение от начала поля
+	add di, ax				;становимся в начало требуемой строки
+	cld									;двигаемся с начала в конец
+	mov al, bl
+	repe scasb
+
+	dec di 								;возврат у предыдущему символу
+	xor ah, ah
+	sub al, es:[di]						;если символы совпадут - разница будет 0
+
+	popf
+	pop di cx
+	ret
+ENDP
 
 ;	Input:
 ;		es:di - start of requring block
@@ -428,21 +549,12 @@ endp
 ;		ax = 0 - row is empty
 ;		ax != 0 - row is not empty
 CheckDownRowForEmpty PROC
-	push cx di
-	pushf
 
-	add di, fieldSize - 1				;становимся в правый нижний участок поля
-	std									;двигаемся с конца в начало
-	mov cx, xField
-	mov al, emptyBlock
-	repe scasb
+	mov al, yField - 1
+	mov ah, xField
+	mov bl, emptyBlock
+	call CheckRowForEmpty
 
-;todo: fix
-	xor ah, ah
-	sub al, es:[di + 1]						;если символы совпадут - разница будет 0
-
-	popf
-	pop di cx
 	ret
 ENDP
 
@@ -451,8 +563,6 @@ ENDP
 ;		ax != 0 - we cannot do that
 MoveDown proc
 	push cx ds es si di
-
-	;todo: fix bug (2 left blocks)
 
 	mov ax, dataStart
 	mov ds, ax
